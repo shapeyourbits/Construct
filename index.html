@@ -21,7 +21,7 @@
     --pixel:  'Press Start 2P', ui-monospace, monospace;
     --term:   'VT323', ui-monospace, monospace;
   }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: var(--term); font-size: 18px; }
+  html, body { margin: 0; padding: 0; background: #141414; color: var(--fg); font-family: var(--term); font-size: 18px; }
 
   /* ---------- header ---------- */
   header {
@@ -552,7 +552,7 @@
      canvas-wrap fills the viewport while preserving the canvas's 960:896 aspect
      ratio. Triggered by JS via document.documentElement.requestFullscreen(). */
   html:fullscreen,
-  html:fullscreen body { background: #000; }
+  html:fullscreen body { background: #141414; }
   html:fullscreen header,
   html:fullscreen #hud,
   html:fullscreen #editor-bar { display: none !important; }
@@ -564,7 +564,7 @@
     height: 100vh;
     padding: 0;
     border: 0;
-    background: #000;
+    background: #141414;
     box-shadow: none;
     display: flex;
     align-items: center;
