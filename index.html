@@ -256,6 +256,329 @@
     display: block; margin: 0 auto;
     font-size: 0.8rem; padding: 0.5rem 1.5rem;
   }
+
+  /* ============================================================================
+     MOBILE PATCH — Phase 1 (play) + Phase 2 (editor)
+     Paste before the closing style tag. All rules are scoped to `body.mobile` or
+     (pointer: coarse) — desktop is untouched.
+     ========================================================================= */
+
+  /* ---------- body-level safe areas & scroll lock --------------------------- */
+  body.mobile {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  body.mobile.playing {
+    overflow: hidden;
+    touch-action: none;
+    overscroll-behavior: none;
+  }
+
+  /* ---------- Phase 1: canvas + HUD reflow on small / touch screens --------- */
+  @media (pointer: coarse), (max-width: 900px) {
+    body.mobile main {
+      padding: 0.5rem;
+      gap: 0.5rem;
+    }
+    body.mobile #canvas-wrap {
+      width: 100%;
+      max-width: 100vw;
+      padding: 2px;
+      box-sizing: border-box;
+    }
+    body.mobile #canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      aspect-ratio: 960 / 896;
+      max-height: calc(100vh - 200px);
+    }
+
+    /* Header collapse — keyboard reminder is irrelevant on touch */
+    body.mobile header {
+      padding: 0.5rem 0.6rem;
+      gap: 0.5rem;
+    }
+    body.mobile header .muted { display: none; }
+
+    /* HUD reflow — title floats above stats, hint hidden */
+    body.mobile #hud {
+      flex-wrap: wrap;
+      padding: 0.4rem 0.6rem;
+      gap: 0.8rem;
+      position: relative;
+    }
+    body.mobile #hud .hint { display: none; }
+    body.mobile #hud-title {
+      position: static;
+      transform: none;
+      order: -1;
+      flex: 1 1 100%;
+      text-align: center;
+    }
+    body.mobile #hud-title-text { white-space: normal; }
+
+    /* Splash menu — slightly enlarged for thumb taps */
+    body.mobile #splash .menu-item {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+    }
+
+    /* Splash layout — tighter chrome so the CONSTRUCT title art has more
+       room, plus min-width/min-height: 0 so the flex container can actually
+       shrink the canvas below its intrinsic 960×320 (otherwise it clips on
+       landscape phones). The width is the smaller of "95vw" and "remaining
+       vertical space × 3" (3:1 is the splash canvas aspect ratio). */
+    body.mobile #splash {
+      padding: 0.5rem;
+      gap: 0.6rem;
+    }
+    body.mobile #splash-canvas {
+      min-width: 0;
+      min-height: 0;
+      max-width: 95vw;
+      max-height: calc(100dvh - 230px);
+      width: min(95vw, calc((100dvh - 230px) * 3));
+      height: auto;
+      aspect-ratio: 960 / 320;
+    }
+  }
+
+  /* ---------- Phase 1: joystick + action overlay ---------------------------- */
+  #touch-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    z-index: 5;
+  }
+  /* Visible only on touch devices while the game is actually playing.
+     `:has(#play-btn.playing)` matches your existing visual-state class. */
+  body.mobile.playing #touch-controls,
+  body.mobile:has(#play-btn.playing) #touch-controls {
+    display: block;
+  }
+
+  #joystick-base {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: rgba(0, 0, 0, 0.30);
+    pointer-events: auto;
+    touch-action: none;
+    box-shadow: 0 0 8px rgba(85, 255, 255, 0.25),
+                inset 0 0 12px rgba(85, 255, 255, 0.10);
+  }
+  #joystick-base::before {
+    /* faint cardinal-direction ticks so the EGA-pixel vibe carries through */
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border-radius: 50%;
+    border: 1px dashed rgba(85, 255, 255, 0.25);
+    pointer-events: none;
+  }
+  #joystick-knob {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 56px; height: 56px;
+    margin: -28px 0 0 -28px;
+    border-radius: 50%;
+    background: var(--gold);
+    opacity: 0.7;
+    border: 2px solid var(--border);
+    pointer-events: none;
+    transform: translate(0, 0);
+    transition: opacity 0.15s ease;
+    box-shadow: 0 0 10px rgba(255, 255, 85, 0.35);
+  }
+  #joystick-knob::after {
+    /* dark centre pip so direction is readable at any opacity */
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 12px; height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  #joystick-base.active #joystick-knob { opacity: 0.95; }
+
+  #touch-actions {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+  #touch-actions button {
+    pointer-events: auto;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: rgba(0, 0, 0, 0.40);
+    color: var(--gold);
+    font-family: var(--pixel);
+    font-size: 0.65rem;
+    padding: 0;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: none;
+  }
+  #touch-actions button:active {
+    background: var(--panel);
+    transform: translate(1px, 1px);
+  }
+  #touch-actions button.muted {
+    opacity: 0.5;
+    text-decoration: line-through;
+  }
+
+  /* ---------- Phase 2: mobile editor layout --------------------------------- */
+  @media (pointer: coarse), (max-width: 900px) {
+    /* The desktop two-column edit layout collapses to a single stacked column */
+    body.mobile.editing main {
+      grid-template-columns: 1fr;
+      justify-items: stretch;
+      gap: 0.5rem;
+    }
+    body.mobile.editing #sidebar { width: 100%; }
+    body.mobile.editing #info {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.95rem;
+    }
+
+    /* Legend → horizontal scrollable palette strip */
+    body.mobile.editing #legend { margin-top: 0.25rem; }
+    body.mobile.editing #legend h2 { display: none; }
+    body.mobile.editing #legend table {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 6px 4px;
+      border: 2px solid var(--border);
+      background: var(--panel);
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+    body.mobile.editing #legend tbody {
+      display: flex;
+      gap: 6px;
+    }
+    body.mobile.editing #legend tr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 52px;
+      padding: 4px;
+      border: 2px solid transparent;
+    }
+    body.mobile.editing #legend tr.active {
+      border-color: var(--gold);
+      background: rgba(255, 255, 85, 0.10);
+    }
+    body.mobile.editing #legend td {
+      padding: 0;
+      font-size: 0.75rem;
+      color: var(--border);
+      text-align: center;
+    }
+    body.mobile.editing #legend td:has(.swatch) { padding-bottom: 2px; }
+    body.mobile.editing #legend .swatch {
+      width: 40px;
+      height: 40px;
+      border-width: 2px;
+    }
+    body.mobile.editing #legend kbd { display: none; }
+
+    /* Editor bar — buttons larger, keyboard hint hidden, title input flexible */
+    body.mobile.editing #editor-bar {
+      gap: 0.4rem;
+      padding: 0.4rem 0.6rem;
+      flex-wrap: wrap;
+    }
+    body.mobile.editing #editor-bar .hint { display: none; }
+    body.mobile.editing #editor-bar button {
+      font-size: 0.6rem;
+      padding: 0.4rem 0.55rem;
+    }
+    body.mobile.editing #editor-bar input[type="text"] {
+      min-width: 8rem;
+      flex: 1 1 100%;
+    }
+  }
+
+  /* Mobile-only editor toolbar (Paint / Erase / Test / Exit) */
+  #editor-mobile-toolbar {
+    display: none;
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.4rem 0.6rem;
+    background: var(--panel);
+    border-bottom: 2px solid var(--border);
+  }
+  body.mobile.editing #editor-mobile-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+  }
+  #editor-mobile-toolbar button {
+    background: var(--bg);
+    color: var(--gold);
+    border: 2px solid var(--border);
+    padding: 0.4rem 0.6rem;
+    font-family: var(--pixel);
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  #editor-mobile-toolbar button.active {
+    background: var(--gold);
+    color: #000;
+  }
+  #editor-mobile-toolbar button:active {
+    transform: translate(1px, 1px);
+  }
+  #editor-mobile-toolbar .spacer { flex: 1; }
+
+  /* ---------- Fullscreen play mode ----------------------------------------- */
+  /* When fullscreen is engaged the header / HUD / editor-bar collapse and the
+     canvas-wrap fills the viewport while preserving the canvas's 960:896 aspect
+     ratio. Triggered by JS via document.documentElement.requestFullscreen(). */
+  html:fullscreen,
+  html:fullscreen body { background: #000; }
+  html:fullscreen header,
+  html:fullscreen #hud,
+  html:fullscreen #editor-bar { display: none !important; }
+  html:fullscreen main { padding: 0; gap: 0; display: block; }
+  html:fullscreen #canvas-wrap {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    padding: 0;
+    border: 0;
+    background: #000;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  html:fullscreen #canvas {
+    display: block;
+    width: min(100vw, calc(100vh * 960 / 896));
+    height: min(100vh, calc(100vw * 896 / 960));
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 960 / 896;
+    image-rendering: pixelated;
+  }
 </style>
 </head>
 <body>
@@ -2101,6 +2424,400 @@ window.addEventListener("keydown", e => {
     e.preventDefault(); e.stopPropagation();
   }
 }, true);
+
+/* ============================================================================
+   MOBILE PATCH — Phase 1 (play) + Phase 2 (editor)
+   Paste before the closing script tag. Reads from existing globals only:
+     keys, game, currentLevel, setCell, renderLevel, COLS, ROWS, TILE
+   No existing code is modified.
+   ========================================================================= */
+(function mobilePatch() {
+  "use strict";
+
+  // ---------- Touch detection --------------------------------------------
+  const isTouch =
+    ("ontouchstart" in window) ||
+    (navigator.maxTouchPoints > 0) ||
+    window.matchMedia("(pointer: coarse)").matches;
+  if (!isTouch) return;
+  document.body.classList.add("mobile");
+
+  // ---------- Sync `game.mode === "play"` to a body class ----------------
+  // CSS uses `body.mobile.playing` for the controls overlay. The existing
+  // engine doesn't tag the body itself; cheap polling avoids hunting for
+  // every place game.mode is mutated.
+  let wasPlaying = false;
+  let wasMuted = null;
+  function syncPlayingClass() {
+    const playing = (typeof game !== "undefined" && game && game.mode === "play");
+    if (playing !== wasPlaying) {
+      document.body.classList.toggle("playing", playing);
+      if (!playing) releaseAllArrows();
+      wasPlaying = playing;
+    }
+    const muted = (typeof audio !== "undefined" && audio) ? !!audio.muted : null;
+    if (muted !== wasMuted) {
+      if (typeof syncSoundBtn === "function") syncSoundBtn();
+      wasMuted = muted;
+    }
+  }
+  setInterval(syncPlayingClass, 150);
+
+  // ---------- Build the touch-controls overlay ----------------------------
+  const wrap = document.getElementById("canvas-wrap");
+  if (!wrap) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "touch-controls";
+  overlay.innerHTML = `
+    <div id="joystick-base">
+      <div id="joystick-knob"></div>
+    </div>
+    <div id="touch-actions">
+      <button type="button" data-action="pause" aria-label="Pause">P</button>
+      <button type="button" data-action="sound" aria-label="Toggle sound">&#x266A;</button>
+      <button type="button" data-action="stop" aria-label="Stop">&#x2715;</button>
+    </div>
+  `;
+  wrap.appendChild(overlay);
+
+  const base = overlay.querySelector("#joystick-base");
+  const knob = overlay.querySelector("#joystick-knob");
+
+  // ---------- Phase 1: joystick logic ------------------------------------
+  const RADIUS = 60;        // joystick base radius (px)
+  const DEAD_ZONE = 0.25;   // fraction of RADIUS below which no direction holds
+  const HYST = 0.12;        // hysteresis at diagonal boundaries
+
+  let activePointerId = null;
+  let currentDir = null;    // "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight" | null
+  let tapCandidate = false; // true if this gesture has stayed near where it started
+  let tapStartX = 0, tapStartY = 0;
+  const TAP_MOVE_PX = 25;   // pointer drift allowed before a gesture stops counting as a tap
+
+  const ARROWS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+  function holdKey(k)    { if (typeof keys !== "undefined") keys.add(k); }
+  function releaseKey(k) { if (typeof keys !== "undefined") keys.delete(k); }
+  function releaseAllArrows() { ARROWS.forEach(releaseKey); currentDir = null; }
+
+  function setDir(newDir) {
+    if (newDir === currentDir) return;
+    if (currentDir) releaseKey(currentDir);
+    if (newDir) holdKey(newDir);
+    currentDir = newDir;
+    if (newDir && navigator.vibrate) navigator.vibrate(8);
+  }
+
+  function snapDirection(dx, dy) {
+    const mag = Math.hypot(dx, dy);
+    if (mag < RADIUS * DEAD_ZONE) return null;
+    const ax = Math.abs(dx), ay = Math.abs(dy);
+    // 4-way snap with hysteresis: if we're already moving along one axis,
+    // require the perpendicular component to clearly dominate before flipping.
+    const horizontal = currentDir === "ArrowLeft" || currentDir === "ArrowRight";
+    const vertical   = currentDir === "ArrowUp"   || currentDir === "ArrowDown";
+    let pickH;
+    if (horizontal)      pickH = ax >= ay * (1 - HYST);
+    else if (vertical)   pickH = ax >  ay * (1 + HYST);
+    else                 pickH = ax >  ay;
+    if (pickH) return dx > 0 ? "ArrowRight" : "ArrowLeft";
+    return dy > 0 ? "ArrowDown" : "ArrowUp";
+  }
+
+  function moveKnob(dx, dy) {
+    const mag = Math.hypot(dx, dy);
+    const k = mag > RADIUS ? RADIUS / mag : 1;
+    knob.style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+  }
+
+  function joystickCentre() {
+    const r = base.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  base.addEventListener("pointerdown", (e) => {
+    if (activePointerId !== null) return;
+    activePointerId = e.pointerId;
+    tapCandidate = true;
+    tapStartX = e.clientX; tapStartY = e.clientY;
+    try { base.setPointerCapture(e.pointerId); } catch (_) {}
+    base.classList.add("active");
+    const c = joystickCentre();
+    moveKnob(e.clientX - c.x, e.clientY - c.y);
+    setDir(snapDirection(e.clientX - c.x, e.clientY - c.y));
+    e.preventDefault();
+  });
+  base.addEventListener("pointermove", (e) => {
+    if (e.pointerId !== activePointerId) return;
+    if (tapCandidate &&
+        Math.hypot(e.clientX - tapStartX, e.clientY - tapStartY) > TAP_MOVE_PX) {
+      tapCandidate = false;
+    }
+    const c = joystickCentre();
+    const dx = e.clientX - c.x;
+    const dy = e.clientY - c.y;
+    moveKnob(dx, dy);
+    setDir(snapDirection(dx, dy));
+  });
+  function endJoystick(e) {
+    if (e.pointerId !== activePointerId) return;
+    activePointerId = null;
+    base.classList.remove("active");
+    knob.style.transform = "translate(0, 0)";
+    setDir(null);
+    // A tap with no significant drag → activate the in-game overlay button
+    // if one is showing (dead / won / gameover / paused / pack-done). Calling
+    // .click() directly because synthetic KeyboardEvents don't trigger the
+    // browser's "Space-activates-focused-button" default action.
+    if (tapCandidate) {
+      const ov = document.getElementById("overlay");
+      const ovBtn = document.getElementById("overlay-btn");
+      if (ov && ov.classList.contains("show") && ovBtn) ovBtn.click();
+    }
+    tapCandidate = false;
+  }
+  base.addEventListener("pointerup", endJoystick);
+  base.addEventListener("pointercancel", endJoystick);
+
+  // ---------- Phase 1: action buttons ------------------------------------
+  // Dispatch the same KeyboardEvents the existing engine listens for. Each
+  // button fires keydown immediately and keyup ~40 ms later, mimicking a tap.
+  function fireKey(key) {
+    const opts = { key, bubbles: true };
+    window.dispatchEvent(new KeyboardEvent("keydown", opts));
+    setTimeout(() => window.dispatchEvent(new KeyboardEvent("keyup", opts)), 40);
+  }
+  const soundBtn = overlay.querySelector('#touch-actions button[data-action="sound"]');
+  function syncSoundBtn() {
+    if (!soundBtn) return;
+    const muted = (typeof audio !== "undefined" && audio && audio.muted);
+    soundBtn.classList.toggle("muted", !!muted);
+  }
+  syncSoundBtn();
+
+  overlay.querySelectorAll("#touch-actions button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const a = btn.dataset.action;
+      if (a === "pause")        fireKey("p");
+      else if (a === "restart") fireKey(" ");
+      else if (a === "stop")    fireKey("Escape");
+      else if (a === "sound") {
+        if (typeof audio !== "undefined" && audio) {
+          audio.muted = !audio.muted;
+          if (typeof syncSoundLabels === "function") syncSoundLabels();
+          syncSoundBtn();
+        }
+      }
+      if (navigator.vibrate) navigator.vibrate(8);
+    });
+  });
+
+  // ---------- Phase 2: mobile editor toolbar ------------------------------
+  const editorBar = document.getElementById("editor-bar");
+  const canvas = document.getElementById("canvas");
+
+  if (editorBar) {
+    const mobileBar = document.createElement("div");
+    mobileBar.id = "editor-mobile-toolbar";
+    mobileBar.innerHTML = `
+      <button type="button" data-tool="paint" class="active">Paint</button>
+      <button type="button" data-tool="erase">Erase</button>
+      <span class="spacer"></span>
+      <button type="button" data-action="test">Test &#x25B6;</button>
+      <button type="button" data-action="exit">Exit &#x2715;</button>
+    `;
+    editorBar.parentNode.insertBefore(mobileBar, editorBar.nextSibling);
+
+    let tool = "paint"; // "paint" | "erase"
+    mobileBar.querySelectorAll("button[data-tool]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        tool = btn.dataset.tool;
+        mobileBar.querySelectorAll("button[data-tool]").forEach((b) =>
+          b.classList.toggle("active", b === btn)
+        );
+      });
+    });
+    mobileBar.querySelector('button[data-action="test"]')
+      .addEventListener("click", () => fireKey("Tab"));
+    mobileBar.querySelector('button[data-action="exit"]')
+      .addEventListener("click", () => fireKey("Escape"));
+
+    // ---------- Phase 2: tap-to-paint on the canvas ----------------------
+    // Maps display pixels back to grid coordinates; respects whatever CSS
+    // scaling is in effect.
+    function getCell(e) {
+      const r = canvas.getBoundingClientRect();
+      const x = (e.clientX - r.left) * (canvas.width  / r.width);
+      const y = (e.clientY - r.top)  * (canvas.height / r.height);
+      const col = Math.floor(x / TILE);
+      const row = Math.floor(y / TILE);
+      if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+      return { row, col };
+    }
+    function selectedBrick() {
+      if (tool === "erase") return 0x00;
+      return (game && game.editor && typeof game.editor.lastBrick === "number")
+        ? game.editor.lastBrick
+        : 0x05; // Normal brick fallback
+    }
+    function paintAt(cell) {
+      if (!cell || !currentLevel) return;
+      const idx = cell.row * COLS + cell.col;
+      const brick = selectedBrick();
+      if (currentLevel.grid[idx] === brick) return; // no-op
+      currentLevel.grid[idx] = brick;
+      if (typeof setCell === "function") setCell(cell.row, cell.col, brick);
+      if (typeof renderLevel === "function") renderLevel(currentLevel);
+    }
+    let painting = false;
+    canvas.addEventListener("pointerdown", (e) => {
+      if (!document.body.classList.contains("editing")) return;
+      painting = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+      paintAt(getCell(e));
+      e.preventDefault();
+    });
+    canvas.addEventListener("pointermove", (e) => {
+      if (!painting || !document.body.classList.contains("editing")) return;
+      paintAt(getCell(e));
+    });
+    function endPaint(e) {
+      painting = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+    canvas.addEventListener("pointerup", endPaint);
+    canvas.addEventListener("pointercancel", endPaint);
+
+    // ---------- Phase 2: legend tap → brick selection --------------------
+    // Defensive: if your existing legend handler already sets
+    // game.editor.lastBrick on click, this is a harmless no-op. If not, this
+    // ensures tap-to-select works on mobile by parsing a data-byte attr on
+    // each row (add `data-byte="0x05"` etc. to your legend rows for this to
+    // light up; otherwise relies on the existing click handler).
+    const legend = document.getElementById("legend-table");
+    if (legend) {
+      legend.addEventListener("click", (e) => {
+        const tr = e.target.closest("tr");
+        if (!tr) return;
+        legend.querySelectorAll("tr").forEach((row) =>
+          row.classList.toggle("active", row === tr)
+        );
+        const attr = tr.dataset.byte;
+        if (attr && game && game.editor) {
+          const parsed = attr.startsWith("0x")
+            ? parseInt(attr, 16)
+            : parseInt(attr, 10);
+          if (!Number.isNaN(parsed)) game.editor.lastBrick = parsed;
+        }
+      });
+    }
+
+    // Title input — scroll into view when the iOS keyboard appears
+    const titleInput = document.getElementById("edit-title");
+    if (titleInput) {
+      titleInput.addEventListener("focus", () => {
+        setTimeout(() => titleInput.scrollIntoView({ block: "center", behavior: "smooth" }), 250);
+      });
+    }
+  }
+
+  // ---------- Safety: release inputs if the tab loses focus --------------
+  window.addEventListener("blur", releaseAllArrows);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) releaseAllArrows();
+  });
+})();
+
+/* ---------- Fullscreen toggle (header button, desktop + mobile) -----------
+   Like the sound toggle: header button flips a `wanted` preference, which is
+   applied on each transition into "play" mode. Exits automatically on view /
+   gameover / final-level-won. The browser's own Esc handling exits fullscreen
+   without involving us (game state is unaffected). */
+(function fullscreenToggle() {
+  const root = document.documentElement;
+  const supportsFs = !!root.requestFullscreen;
+  const header = document.querySelector("header");
+  if (!header) return;
+
+  let wanted = false;
+
+  const btn = document.createElement("button");
+  btn.id = "fs-btn";
+  btn.type = "button";
+  btn.title = supportsFs ? "Toggle fullscreen" : "Fullscreen not supported";
+  if (!supportsFs) btn.disabled = true;
+  function updateLabel() {
+    btn.textContent = wanted ? "⛶ Fullscreen on" : "⛶ Fullscreen off";
+  }
+  updateLabel();
+
+  // Insert after #mute-btn for consistency with the sound toggle.
+  const muteBtn = document.getElementById("mute-btn");
+  if (muteBtn) muteBtn.parentNode.insertBefore(btn, muteBtn.nextSibling);
+  else header.appendChild(btn);
+
+  function enter() {
+    if (!supportsFs || document.fullscreenElement) return;
+    root.requestFullscreen().catch(() => {});
+  }
+  function exit() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  }
+
+  btn.addEventListener("click", () => {
+    wanted = !wanted;
+    updateLabel();
+    if (typeof game === "undefined" || !game) return;
+    if (wanted && game.mode === "play") enter();
+    else if (!wanted) exit();
+  });
+
+  // Mode-transition watcher — cheap poll, identical pattern to the mobile patch.
+  let prev = null;
+  setInterval(() => {
+    if (typeof game === "undefined" || !game) return;
+    const m = game.mode;
+    if (m === prev) return;
+    prev = m;
+
+    if (m === "play" && wanted) {
+      enter();
+    } else if (m === "view" || m === "gameover") {
+      exit();
+    } else if (m === "won" &&
+               typeof findNextPlayableLevel === "function" &&
+               findNextPlayableLevel(game.levelIdx + 1) < 0) {
+      exit();
+    }
+  }, 150);
+})();
+
+/* ---------- Persist sound preference to localStorage ---------------------
+   The engine's `audio.muted` is in-memory only. Mirror it to localStorage so
+   the setting survives reloads. Polls the property so any path that toggles
+   it (header, splash, mobile cluster) is captured without hooking each one. */
+(function persistSoundPref() {
+  const KEY = "constr-muted";
+  function apply() {
+    if (typeof audio === "undefined" || !audio) return false;
+    const stored = localStorage.getItem(KEY);
+    if (stored === "1") audio.muted = true;
+    else if (stored === "0") audio.muted = false;
+    if (typeof syncSoundLabels === "function") syncSoundLabels();
+    return true;
+  }
+  if (!apply()) setTimeout(apply, 50);
+
+  let last = (typeof audio !== "undefined" && audio) ? !!audio.muted : null;
+  setInterval(() => {
+    if (typeof audio === "undefined" || !audio) return;
+    const m = !!audio.muted;
+    if (m !== last) {
+      localStorage.setItem(KEY, m ? "1" : "0");
+      last = m;
+    }
+  }, 200);
+})();
 </script>
 </body>
 </html>
