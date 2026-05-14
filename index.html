@@ -2486,7 +2486,7 @@ window.addEventListener("keydown", e => {
 
   // ---------- Phase 1: joystick logic ------------------------------------
   const RADIUS = 60;        // joystick base radius (px)
-  const DEAD_ZONE = 0.25;   // fraction of RADIUS below which no direction holds
+  const DEAD_ZONE = 0.1;   // fraction of RADIUS below which no direction holds
   const HYST = 0.12;        // hysteresis at diagonal boundaries
 
   let activePointerId = null;
